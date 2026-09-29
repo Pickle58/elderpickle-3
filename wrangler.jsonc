@@ -1,0 +1,38 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "my-emdash-site",
+	"main": "./src/worker.ts",
+	"compatibility_date": "2026-09-28",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "my-emdash-site",
+			"migrations_dir": "../../migrations",
+			"database_id": "8946fb32-e8fc-447c-bf5e-beaeb891d97d",
+		},
+	],
+	"r2_buckets": [
+		{
+			"binding": "MEDIA",
+			"bucket_name": "my-emdash-media",
+		},
+	],
+	"kv_namespaces": [
+		{
+			"binding": "SESSION",
+			"id": "f5221a0a45fb481a9fc38fba944f0b1f",
+		},
+	],
+	"vars": {
+		"EMDASH_SITE_URL": "https://my-emdash-site.pilkington.workers.dev"
+	},
+	// General maintenance cron trigger
+	"triggers": {
+		"crons": [
+			"* * * * *"
+		],
+	},
+}
