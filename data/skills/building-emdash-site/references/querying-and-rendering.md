@@ -50,7 +50,7 @@ if (!post) {
 
 ```typescript
 interface ContentEntry<T> {
-	id: string; // The slug (used in URLs); `locale/slug` for non-default locales
+	id: string; // Loader id: bare slug, or `locale/slug` when that locale's URLs are prefixed
 	data: T; // All fields, including system fields
 	edit: EditProxy; // Visual editing attributes (spread onto elements)
 }
@@ -59,6 +59,7 @@ interface ContentEntry<T> {
 interface PostData {
 	id: string; // Database ULID (use for taxonomy lookups, etc.)
 	slug: string | null;
+	locale: string;
 	status: string;
 	title: string;
 	featured_image?: {
@@ -79,7 +80,7 @@ interface PostData {
 }
 ```
 
-**Important:** `entry.id` is the slug (for URLs), `entry.data.id` is the database ULID (for API calls like `getEntryTerms`). With several locales configured, entries in a non-default locale (or every locale, with `prefixDefaultLocale`) have `entry.id` = `locale/slug`; `entry.data.slug` is the bare slug (or `null`).
+**Important:** `entry.data.id` is the database ULID (for API calls like `getEntryTerms`). `entry.data.slug` is the bare slug, or `null`. `entry.id` is the loader id: that bare slug, or `locale/slug` when several locales are configured and that locale's public URLs are prefixed. Build public links from the bare slug (`entry.data.slug`) and add the locale prefix with Astro locale routing — `getRelativeLocaleUrl` or `getAbsoluteLocaleUrl` from `astro:i18n` — or an equivalent locale-aware route, so a French post is `/fr/posts/my-post`. Appending a prefixed `entry.id` (`/posts/${entry.id}`) produces `/posts/fr/my-post`. Those `astro:i18n` helpers require `i18n` in the Astro config. Without i18n, `entry.id` is the bare slug and `/posts/${entry.id}` is the link. `routing: { prefixDefaultLocale: true }` and `routing: "prefix-always"` are unsupported for EmDash admin routes: they prefix integration pages, so `/_emdash/admin` returns 404. Use Astro's default `prefix-other-locales` strategy.
 
 ### Reference Fields
 
@@ -221,6 +222,7 @@ When an admin is logged in and views the site, these attributes enable click-to-
 ---
 import { getEmDashCollection } from "emdash";
 import { Image } from "emdash/ui";
+import { getRelativeLocaleUrl } from "astro:i18n";
 import Base from "../../layouts/Base.astro";
 
 const { entries: posts, cacheHint } = await getEmDashCollection("posts", {
@@ -233,7 +235,7 @@ if (Astro.cache?.enabled) Astro.cache.set(cacheHint);
 		{posts.map(post => (
 		<article>
 			{post.data.featured_image && <Image image={post.data.featured_image} />}
-			<a href={`/posts/${post.id}`}>{post.data.title}</a>
+			<a href={getRelativeLocaleUrl(post.data.locale, `/posts/${post.data.slug}`)}>{post.data.title}</a>
 			{post.data.excerpt && <p>{post.data.excerpt}</p>}
 		</article>
 	))}
@@ -291,6 +293,7 @@ const tags = post.data.terms?.tag ?? [];
 ```astro
 ---
 import { getTaxonomyTermsWithCacheHint, getEmDashCollection, type TaxonomyTerm } from "emdash";
+import { getRelativeLocaleUrl } from "astro:i18n";
 import Base from "../../layouts/Base.astro";
 
 const { slug } = Astro.params;
@@ -314,7 +317,7 @@ if (Astro.cache?.enabled) {
 <Base title={`${term.label} posts`}>
 	<h1>{term.label}</h1>
 	{posts.map(post => (
-		<a href={`/posts/${post.id}`}>{post.data.title}</a>
+		<a href={getRelativeLocaleUrl(post.data.locale, `/posts/${post.data.slug}`)}>{post.data.title}</a>
 	))}
 </Base>
 ```
@@ -323,6 +326,7 @@ if (Astro.cache?.enabled) {
 
 ```typescript
 import type { APIRoute } from "astro";
+import { getRelativeLocaleUrl } from "astro:i18n";
 import { getEmDashCollection } from "emdash";
 
 const siteTitle = "My Site";
@@ -335,9 +339,12 @@ export const GET: APIRoute = async ({ url }) => {
 	});
 
 	const items = posts
-		.filter((p) => p.data.publishedAt)
+		.filter((p) => p.data.publishedAt && p.data.slug)
 		.map((post) => {
-			const postUrl = `${siteUrl}/posts/${post.id}`;
+			const postUrl = new URL(
+				getRelativeLocaleUrl(post.data.locale, `/posts/${post.data.slug}`),
+				siteUrl,
+			).href;
 			return `    <item>
       <title>${escapeXml(post.data.title)}</title>
       <link>${postUrl}</link>
@@ -414,6 +421,9 @@ When a collection has no content, show a helpful empty state:
 
 ```astro
 ---
+import { getEmDashCollection } from "emdash";
+import { getRelativeLocaleUrl } from "astro:i18n";
+
 const cursor = Astro.url.searchParams.get("cursor") ?? undefined;
 const { entries, nextCursor, cacheHint } = await getEmDashCollection("posts", {
 	limit: 10,
@@ -423,7 +433,7 @@ const { entries, nextCursor, cacheHint } = await getEmDashCollection("posts", {
 if (Astro.cache?.enabled) Astro.cache.set(cacheHint);
 ---
 {entries.map(post => (
-	<a href={`/posts/${post.id}`}>{post.data.title}</a>
+	<a href={getRelativeLocaleUrl(post.data.locale, `/posts/${post.data.slug}`)}>{post.data.title}</a>
 ))}
 {nextCursor && <a href={`?cursor=${nextCursor}`}>Next page</a>}
 ```

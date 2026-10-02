@@ -18,14 +18,31 @@ Native plugins also use Block Kit elements for [Portable Text block editing fiel
 ```typescript
 import type { BlockInteraction } from "@emdash-cms/blocks";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// routeCtx.input is unknown. Reject anything that is not a BlockInteraction
+// before reading variant fields such as values.enabled.
+function isBlockInteraction(input: unknown): input is BlockInteraction {
+	if (!isRecord(input)) return false;
+	if (input.type === "page_load") return typeof input.page === "string";
+	if (input.type === "block_action") return typeof input.action_id === "string";
+	if (input.type === "form_submit") {
+		return typeof input.action_id === "string" && isRecord(input.values);
+	}
+	return false;
+}
+
 routes: {
 	admin: {
-		handler: async (ctx) => {
-			// EmDash parses the request body once and exposes it as ctx.input;
-			// read it directly rather than ctx.request.json() (the body is consumed).
-			// BlockInteraction is the discriminated union of page_load,
-			// block_action, and form_submit payloads.
-			const interaction = ctx.input as BlockInteraction;
+		handler: async (routeCtx, ctx) => {
+			// EmDash parses the request body once and exposes it as routeCtx.input;
+			// read it directly rather than routeCtx.request.json() (the body is consumed).
+			if (!isBlockInteraction(routeCtx.input)) {
+				return { blocks: [], toast: { message: "Invalid interaction", type: "error" } };
+			}
+			const interaction = routeCtx.input;
 
 			if (interaction.type === "page_load") {
 				return {
@@ -45,7 +62,12 @@ routes: {
 			}
 
 			if (interaction.type === "form_submit" && interaction.action_id === "save") {
-				await ctx.kv.set("settings", interaction.values);
+				const apiUrl = interaction.values.api_url;
+				const enabled = interaction.values.enabled;
+				if (typeof apiUrl !== "string" || typeof enabled !== "boolean") {
+					return { blocks: [], toast: { message: "Invalid interaction", type: "error" } };
+				}
+				await ctx.kv.set("settings", { api_url: apiUrl, enabled });
 				return {
 					blocks: [/* updated blocks */],
 					toast: { message: "Settings saved", type: "success" },

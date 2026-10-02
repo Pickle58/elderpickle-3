@@ -530,7 +530,7 @@ Sample content, bylines and taxonomy terms are applied only when you:
 - open `/_emdash/api/setup/dev-bypass` (add `?content=0` to skip content), or
 - run `npx emdash seed seed/seed.json` against a local SQLite database (`--database` defaults to `./data.db`).
 
-Existing data is never overwritten.
+Existing content, bylines, and taxonomy terms are left in place when conflict handling stays at the default (`skip`). Applying a seed still replaces the items of every menu it names, and the widgets of every widget area it names, including with that default.
 
 Seed validation checks structure only: the version, required names and slugs, duplicates, taxonomy parents, and byline and menu references. It does not check field values, Portable Text, `$ref:` targets or `$media` URLs. An invalid seed is skipped on the first request without an error, so check it explicitly:
 

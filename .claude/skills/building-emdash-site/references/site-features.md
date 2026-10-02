@@ -63,11 +63,21 @@ const primaryMenu = await getMenu("primary");
 ```astro
 {primaryMenu?.items.map(item => (
 	<li>
-		<a href={item.url}>{item.label}</a>
+		<a
+			href={item.url}
+			target={item.target}
+			rel={item.target === "_blank" ? "noopener noreferrer" : undefined}
+		>{item.label}</a>
 		{item.children.length > 0 && (
 			<ul class="submenu">
 				{item.children.map(child => (
-					<li><a href={child.url}>{child.label}</a></li>
+					<li>
+						<a
+							href={child.url}
+							target={child.target}
+							rel={child.target === "_blank" ? "noopener noreferrer" : undefined}
+						>{child.label}</a>
+					</li>
 				))}
 			</ul>
 		)}
@@ -351,7 +361,9 @@ Comments are enabled per-collection in the seed: `"commentsEnabled": true`.
 
 ## Page Contributions (Plugin Head/Body Injection)
 
-Plugins can inject content into the `<head>` and `<body>` of pages. To support this, use the page contribution components:
+Plugins can inject content into the `<head>` and `<body>` of pages. To support this, use the page contribution components.
+
+Partial example — not copy-paste ready. `post`, `slug`, `description`, `canonical`, `image`, `fullTitle`, and `content` come from the page's props and entry query (see [Layout Pattern](#layout-pattern) for a complete layout):
 
 ```astro
 ---
@@ -503,7 +515,7 @@ const menu = await getMenu("primary");
 const pageCtx = createPublicPageContext({
 	Astro,
 	kind: content ? "content" : "custom",
-	pageType: "website",
+	pageType: content ? "article" : "website",
 	title,
 	pageTitle: pageTitle ?? title,
 	description,
@@ -527,7 +539,11 @@ const pageCtx = createPublicPageContext({
 				<a href="/">My Site</a>
 				<LiveSearch placeholder="Search..." collections={["posts", "pages"]} />
 				{menu?.items.map(item => (
-					<a href={item.url}>{item.label}</a>
+					<a
+						href={item.url}
+						target={item.target}
+						rel={item.target === "_blank" ? "noopener noreferrer" : undefined}
+					>{item.label}</a>
 				))}
 			</nav>
 		</header>
